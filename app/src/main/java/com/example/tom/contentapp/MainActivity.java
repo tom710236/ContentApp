@@ -1,11 +1,14 @@
 package com.example.tom.contentapp;
 
 import android.Manifest;
+import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.OperationApplicationException;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -15,6 +18,8 @@ import android.view.View;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
+
+import java.util.ArrayList;
 
 import static android.Manifest.permission.READ_CONTACTS;
 import static android.Manifest.permission.WRITE_CONTACTS;
@@ -31,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
         int permission = ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.READ_CONTACTS);
         //判斷檢查後的結果permission
-        //未取得權限 向使用者要求允許權限
+        //未取得權限 向使顯示在第二個欄位TextView用者要求允許權限
         if(permission != PackageManager.PERMISSION_GRANTED) {
             /*
             ActivityCompat.requestPermissions(Context context,
@@ -186,7 +191,7 @@ public class MainActivity extends AppCompatActivity {
                             //將聯絡人id值轉為字串後 放在字串陣列中 對應到條件中的第一個問號位置
                             new String[]{String.valueOf(id)},
                             null);
-                    //先將第二次查詢結果的pCursor往下移一筆 若有資料則取得第一個電話顯示在第二個欄位TextView
+                    //先將第二次查詢結果的pCursor往下移一筆 若有資料則取得第一個電話
                     if(pCursor.moveToFirst()){
                         String number = pCursor.getString(pCursor.getColumnIndex(
                                 ContactsContract.CommonDataKinds.Phone.DATA
@@ -198,6 +203,8 @@ public class MainActivity extends AppCompatActivity {
         };
 
         list.setAdapter(adapter);
+        //執行後才會新增聯絡人
+        insertContact();
 
         /*顯示聯絡人清單
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(
@@ -207,5 +214,41 @@ public class MainActivity extends AppCompatActivity {
                 new String[]{ContactsContract.Contacts.DISPLAY_NAME},
                 new int[]{android.R.id.text1},
                 0);*/
+    }
+    //新增一筆聯絡人方式
+    private void insertContact() {
+        //準備一個ArrayList集合 存放內容提供者操作指令(操作集合)
+        ArrayList ops = new ArrayList();
+        //準備索引值 預設值為0
+        int index = ops.size();
+        //建立一個新增資料操作 並加到操作集合中 資料對象是RawContacts
+        //新增成功後 本操作會得到其ID值
+        ops.add(ContentProviderOperation
+                .newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null).build());
+        //建立一個新資料夾操作 並加到操作集合中 資料對象是ContactsContract.Data
+        //取得上一個新增至RawContacts紀錄的ID值 此段最主要是要寫入聯絡人的姓名
+        ops.add(ContentProviderOperation
+                .newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID,index)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, "Jane").build());
+        //建立一個新增到phone的電話號碼操作
+        //使用第一個新增至RawContacts紀錄的ID值
+        ops.add(ContentProviderOperation
+                .newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID,index)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, "0900112233")
+                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE).build());
+        //批次執行操作集合
+        try {
+            getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        } catch (OperationApplicationException e) {
+            e.printStackTrace();
+        }
     }
 }

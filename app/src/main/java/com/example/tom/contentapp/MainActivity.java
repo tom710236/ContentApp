@@ -207,6 +207,8 @@ public class MainActivity extends AppCompatActivity {
         insertContact();
         //執行後才會刪除聯絡人
         deleteContact();
+        //執行後才會更新聯絡人
+        updateContact();
 
         /*顯示聯絡人清單
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(
@@ -217,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
                 new int[]{android.R.id.text1},
                 0);*/
     }
-    //新增一筆聯絡人方式
+    //新增一筆聯絡人方式 新增 Jane
     private void insertContact() {
         //準備一個ArrayList集合 存放內容提供者操作指令(操作集合)
         ArrayList ops = new ArrayList();
@@ -264,6 +266,29 @@ public class MainActivity extends AppCompatActivity {
         //建立一個刪除操作 並加到操作集合中
         ops.add(ContentProviderOperation.newDelete(ContactsContract.RawContacts.CONTENT_URI)
         .withSelection(where,params)
+        .build());
+        //批次執行操作集合
+        try{
+            getContentResolver().applyBatch(ContactsContract.AUTHORITY,ops);
+        }catch (RemoteException e){
+            e.printStackTrace();
+        }catch (OperationApplicationException e){
+            e.printStackTrace();
+        }
+    }
+    //更新聯絡人 將Tom的電話號碼改變
+    private void updateContact(){
+        //Where的條件敘述 名稱 =?AND 資料格式 =?
+        String where = ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " = ? AND "+ ContactsContract.Data
+                .MIMETYPE + " = ?";
+        //條件敘述的資料值 對應到第二行的兩個問號位置
+        String[] params = new String[] {"Tom", ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE};
+        //準備一個ArrayList集合 存放內容提供者操作指令(操作集合)
+        ArrayList ops = new ArrayList();
+        //建立一個更新操作 並加到操作集合中
+        ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+        .withSelection(where,params)
+        .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER,"0911123456")
         .build());
         //批次執行操作集合
         try{

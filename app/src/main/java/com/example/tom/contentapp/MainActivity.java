@@ -205,6 +205,8 @@ public class MainActivity extends AppCompatActivity {
         list.setAdapter(adapter);
         //執行後才會新增聯絡人
         insertContact();
+        //執行後才會刪除聯絡人
+        deleteContact();
 
         /*顯示聯絡人清單
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(
@@ -248,6 +250,27 @@ public class MainActivity extends AppCompatActivity {
         } catch (RemoteException e) {
             e.printStackTrace();
         } catch (OperationApplicationException e) {
+            e.printStackTrace();
+        }
+    }
+    //刪除聯絡人
+    private void deleteContact(){
+        //Where的條件敘述 名稱=?
+        String where = ContactsContract.Data.DISPLAY_NAME + "=?";
+        //條件敘述的資料值 對應到第二行的問號位置
+        String[] params = new String[] {"Jane"};
+        //準備一個ArrayList集合 存放內容提供者操作指令(操作集合)
+        ArrayList ops = new ArrayList();
+        //建立一個刪除操作 並加到操作集合中
+        ops.add(ContentProviderOperation.newDelete(ContactsContract.RawContacts.CONTENT_URI)
+        .withSelection(where,params)
+        .build());
+        //批次執行操作集合
+        try{
+            getContentResolver().applyBatch(ContactsContract.AUTHORITY,ops);
+        }catch (RemoteException e){
+            e.printStackTrace();
+        }catch (OperationApplicationException e){
             e.printStackTrace();
         }
     }

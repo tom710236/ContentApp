@@ -28,7 +28,7 @@ public class MainActivity extends AppCompatActivity {
         int permission = ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.READ_CONTACTS);
         //判斷檢查後的結果permission
-//      //未取得權限 向使用者要求允許權限
+        //未取得權限 向使用者要求允許權限
         if(permission != PackageManager.PERMISSION_GRANTED) {
             /*
             ActivityCompat.requestPermissions(Context context,
@@ -70,9 +70,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //用readContacts來進行查詢
+    //顯示聯絡人電話時(不顯示無電話連絡人)用Implict John
     private void readContacts() {
         //先取得ContentResolver物件
         ContentResolver resolver = getContentResolver();
+       /*
+       準備將在query方法出現的欄位參數
+       因為使用跨表格查詢 所以將欄位的鍵值Contacts._ID納入
+       再將未來需要顯示到畫面中的Contacts.DISPLAY_NAME聯絡人名單
+       Phone.NUMBER電話號碼加入欄位陣列中
+        */
+        String[] projection = {ContactsContract.Contacts._ID,
+                ContactsContract.Contacts.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER
+        };
         //查詢使用的是query方法
         /*
         public final Cursor query(
@@ -84,8 +95,22 @@ public class MainActivity extends AppCompatActivity {
          */
         //查詢手機中的所有聯絡人 並得到cursor物件
         Cursor cursor = resolver.query(
-            ContactsContract.Contacts.CONTENT_URI,
-            null,null,null,null);
+                /* 顯示聯絡人清單
+                ContactsContract.Contacts.CONTENT_URI,
+                null,null,null,null);
+                 */
+                //顯示聯絡人電話
+                /*
+                查詢語法 得到Cursor
+                使用電話號麻的URI 為Phone.CONTENT_URI
+                傳入準備好的欄位名稱陣列 projection
+                 */
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                projection,
+                null,
+                null,
+                null);
+
         //cursor.moveToNext 可將Cursor向下移動一筆(處理每一筆資料)
         /*
         有資料則回傳true無怎回傳false,用while迴圈依序處理查詢每一筆資料
@@ -114,17 +139,32 @@ public class MainActivity extends AppCompatActivity {
         String[] to 資料顯示的元件ID
         int flag 給0 表示資料庫中的紀錄如果被更動 ListView 將不自動重新查詢並更新資料
          */
+
         ListView list = (ListView)findViewById(R.id.list);
+        //顯示聯絡人電話
+        //建立SimpleCursorAdapter物件
+        SimpleCursorAdapter adapter = new SimpleCursorAdapter(
+                this,
+                //每列顯示兩欄資料
+                android.R.layout.simple_list_item_2,
+                //傳入查詢結果Cursor
+                cursor,
+                //傳入cusor物件中的欄位字串陣列
+                new String[]{
+                        ContactsContract.Contacts.DISPLAY_NAME,
+                        ContactsContract.CommonDataKinds.Phone.NUMBER},
+                //欄位對應到畫面上應顯示的元件ID值陣列(配合android.R.layout.simple_list_item_2)
+                new int[]{android.R.id.text1,android.R.id.text2},
+                1);
+        list.setAdapter(adapter);
+
+        /*顯示聯絡人清單
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(
                 this,
                 android.R.layout.simple_list_item_1,
                 cursor,
                 new String[]{ContactsContract.Contacts.DISPLAY_NAME},
                 new int[]{android.R.id.text1},
-                0);
-        list.setAdapter(adapter);
-
+                0);*/
     }
-
-
 }

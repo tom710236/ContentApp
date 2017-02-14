@@ -2,6 +2,7 @@ package com.example.tom.contentapp;
 
 import android.Manifest;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Bundle;
@@ -10,8 +11,10 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.view.View;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
+import android.widget.TextView;
 
 import static android.Manifest.permission.READ_CONTACTS;
 import static android.Manifest.permission.WRITE_CONTACTS;
@@ -99,14 +102,15 @@ public class MainActivity extends AppCompatActivity {
                 ContactsContract.Contacts.CONTENT_URI,
                 null,null,null,null);
                  */
+                /*****************************************/
                 //顯示聯絡人電話
                 /*
                 查詢語法 得到Cursor
                 使用電話號麻的URI 為Phone.CONTENT_URI
                 傳入準備好的欄位名稱陣列 projection
                  */
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                projection,
+                ContactsContract.Contacts.CONTENT_URI,
+                null,
                 null,
                 null,
                 null);
@@ -152,10 +156,47 @@ public class MainActivity extends AppCompatActivity {
                 //傳入cusor物件中的欄位字串陣列
                 new String[]{
                         ContactsContract.Contacts.DISPLAY_NAME,
-                        ContactsContract.CommonDataKinds.Phone.NUMBER},
+                        ContactsContract.Contacts.HAS_PHONE_NUMBER,
+                        },
                 //欄位對應到畫面上應顯示的元件ID值陣列(配合android.R.layout.simple_list_item_2)
                 new int[]{android.R.id.text1,android.R.id.text2},
-                1);
+                1){
+            //複寫方法 bindView
+            @Override
+            public void bindView(View view, Context context, Cursor cursor) {
+                super.bindView(view, context, cursor);
+                //先取得單列中的第二個用來顯示電話號碼的TextView
+                TextView phone = (TextView)view.findViewById(android.R.id.text2);
+                //由cursor取得HAS_PHONE_NUMBER欄位的值 若該列的值是0 顯示空字串
+                if (cursor.getInt(cursor.getColumnIndex(
+                        ContactsContract.Contacts.HAS_PHONE_NUMBER))
+                        == 0) {
+                    phone.setText("");
+                }
+                //不是0代表有電話號碼
+                else {
+                    //先取得聯絡人ID
+                    int id = cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts._ID));
+                    //進行二次查詢 查詢電話號碼表格
+                    Cursor pCursor = getContentResolver().query(
+                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                            null,
+                            //查詢條件是電話表格中的外鍵值Phone.CONTACT_ID等於第25行聯絡人ID值
+                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID+"=?",
+                            //將聯絡人id值轉為字串後 放在字串陣列中 對應到條件中的第一個問號位置
+                            new String[]{String.valueOf(id)},
+                            null);
+                    //先將第二次查詢結果的pCursor往下移一筆 若有資料則取得第一個電話顯示在第二個欄位TextView
+                    if(pCursor.moveToFirst()){
+                        String number = pCursor.getString(pCursor.getColumnIndex(
+                                ContactsContract.CommonDataKinds.Phone.DATA
+                        ));
+                        phone.setText(number);
+                    }
+                }
+            }
+        };
+
         list.setAdapter(adapter);
 
         /*顯示聯絡人清單
